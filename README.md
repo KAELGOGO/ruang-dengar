@@ -78,6 +78,7 @@ dan slot jam 19.00 untuk 3 hari ke depan.
 
 ## Pembagian modul
 
+Detail tugas, file milik tiap modul, jadwal, dan skenario demo: **[docs/PEMBAGIAN-TUGAS.md](docs/PEMBAGIAN-TUGAS.md)**.
 Setiap modul punya controller dengan komentar `TODO (Module N)`. Cari dengan `TODO (Module 1)` dan seterusnya.
 
 | Modul | Isi | File utama |

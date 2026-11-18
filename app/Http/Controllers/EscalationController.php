@@ -15,8 +15,8 @@ class EscalationController extends Controller
         Gate::authorize('escalate', $session);
         $request->validate(['reason' => ['required', 'string', 'max:1000']]);
 
-        // TODO (Module 4): create Escalation (source listener, raised_by = listener),
-        // set session status escalated, redirect back with a message.
+        // TODO (Module 4): app(\App\Services\Escalator::class)->byListener($session, $request->user(), ...),
+        // then redirect back with a message.
         abort(501, 'Belum dibuat (Modul 4)');
     }
 

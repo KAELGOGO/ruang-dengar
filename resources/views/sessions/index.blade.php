@@ -27,6 +27,8 @@
                                 <button class="btn btn-sm btn-outline-danger">Batalkan</button>
                             </form>
                         @endcan
+                        {{-- Module 4 puts its rating/escalation buttons in this partial, so nobody edits this file at the same time. --}}
+                        @include('sessions._aksi-modul-4', ['sesi' => $sesi])
                     </td>
                 </tr>
             @empty

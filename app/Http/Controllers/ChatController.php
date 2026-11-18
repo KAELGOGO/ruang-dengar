@@ -40,7 +40,7 @@ class ChatController extends Controller
 
         // TODO (Module 3): save the message. Set flagged = true when the text contains any
         // config('krisis.kata_kunci') BEFORE saving (the body is encrypted afterwards), and
-        // let Module 4 create an escalation with source = 'keyword'.
+        // when flagged call app(\App\Services\Escalator::class)->byKeyword($session, ...) (Module 4).
         abort(501, 'Belum dibuat (Modul 3)');
     }
 
