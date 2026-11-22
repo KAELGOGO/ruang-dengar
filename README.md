@@ -1,7 +1,7 @@
 # Ruang Dengar (nama sementara)
 
 Platform peer-support kesehatan mental untuk tugas Web Programming. Pengguna dipasangkan dengan
-listener terverifikasi sesuai kelompok umur. Kalau kasusnya berat, listener mengeskalasi ke psikolog.
+listener terverifikasi, yang seumuran didahulukan. Kalau kasusnya berat, listener mengoper ke psikolog.
 Isi dan alurnya mengikuti proposal tim (dokumen "WebProg - Background").
 
 **Status:** kerangka. Yang sudah jalan: database, login/registrasi dengan tanggal lahir dan role,
@@ -53,11 +53,14 @@ dan slot jam 19.00 untuk 3 hari ke depan.
 
 1. **Aturan matching** (`app/Services/ListenerMatcher.php`, dites di `tests/Feature/MatchingTest.php`):
    - Hanya listener yang sudah di-approve admin.
-   - Relawan dan mahasiswa psikologi hanya melayani pengguna dari kelompok umur yang sama.
-   - Psikolog boleh melayani semua kelompok umur.
-   - Listener minimal 18 tahun, jadi remaja 13–17 tahun hanya dilayani psikolog. Ini menjaga
-     "age-tiered matching" di proposal tanpa membuat anak menangani anak.
-   - Kalau ada beberapa yang cocok, dipilih listener dengan sesi paling sedikit.
+   - Listener minimal 18 tahun, jadi remaja 13–17 tahun hanya dilayani psikolog, supaya anak
+     tidak ditangani sesama anak muda.
+   - Pengguna 18+ dipasangkan menurut urutan prioritas: relawan/mahasiswa psikologi dari
+     kelompok umur yang sama, lalu relawan/mahasiswa dari kelompok umur lain, dan psikolog
+     paling akhir. Ini bentuk "age-tiered matching" di proposal: umur menentukan urutan, bukan
+     syarat, jadi pengguna yang lebih tua tidak gagal dapat listener hanya karena relawan
+     kebanyakan masih muda. Psikolog disisakan untuk remaja dan kasus yang dioper listener.
+   - Dalam urutan yang sama, dipilih listener dengan sesi paling sedikit.
 2. **Kelompok umur dihitung dari tanggal lahir** (`app/Support/AgeTier.php`), tidak disimpan di
    database. Akibatnya tier tidak bisa basi saat pengguna berulang tahun, dan tidak bisa diubah
    pengguna. Batasan: tanggal lahir diisi sendiri; verifikasi KTP adalah *future work*.

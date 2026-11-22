@@ -154,7 +154,7 @@ dan view baru di `resources/views/escalations*`, `ratings*`, serta `admin/metric
 
 1. Calon listener daftar, upload sertifikat, lalu admin memverifikasinya dan memberi gelar. **(Modul 1)**
 2. Listener membuat jadwal. **(Modul 2)**
-3. Pengguna remaja menekan "Bicara sekarang" dan dipasangkan dengan psikolog. Pengguna 20 tahun dipasangkan dengan relawan seumuran. **(kerangka)**
+3. Pengguna remaja menekan "Bicara sekarang" dan dipasangkan dengan psikolog. Pengguna 20 tahun dipasangkan dengan relawan atau mahasiswa psikologi seumuran. Pengguna 30 tahun tetap dapat relawan/mahasiswa walau beda kelompok umur, bukan psikolog. **(kerangka)**
 4. Pengguna dan listener mengobrol. Satu pesan berisi kata kunci krisis memunculkan kontak darurat untuk pengguna dan tanda di layar listener. **(Modul 3)**
 5. Listener menekan "Oper ke psikolog", sistem memasangkan psikolog yang kosong, dan pengguna pindah ke chat dengan psikolog. Pengguna memberi rating. **(Modul 4)**
 6. Admin membuka dashboard metrik. **(Modul 4)**
