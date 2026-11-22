@@ -152,7 +152,7 @@ class Modul1VerifikasiTest extends TestCase
         $this->actingAs(User::factory()->admin()->create())->get('/admin/verifications')
             ->assertOk()
             ->assertSee('Belum ada dokumen yang diunggah.')
-            ->assertSee('Tidak bisa disetujui tanpa dokumen');
+            ->assertSee('Tidak bisa disetujui atau ditolak tanpa dokumen');
     }
 
     public function test_admin_list_shows_empty_message(): void
@@ -208,5 +208,138 @@ class Modul1VerifikasiTest extends TestCase
         $this->actingAs(User::factory()->age(20)->create())->get(route('admin.documents.show', $dokumen))->assertForbidden();
         auth()->logout();
         $this->get(route('admin.documents.show', $dokumen))->assertRedirect('/login');
+    }
+
+    private function pendingListenerWithDocument(): User
+    {
+        $listener = User::factory()->age(21)->listener()->create(['name' => 'Tono Menunggu']);
+        $listener->listenerProfile->documents()->create(['path' => 'credentials/a.pdf', 'original_name' => 'ijazah.pdf']);
+
+        return $listener;
+    }
+
+    public function test_admin_approval_sets_title_and_marks_documents(): void
+    {
+        $listener = $this->pendingListenerWithDocument();
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->post(route('admin.verifications.approve', $listener->listenerProfile), ['credential_level' => 'psych_student'])
+            ->assertRedirect(route('admin.verifications.index'));
+
+        $profile = $listener->listenerProfile->fresh();
+        $this->assertSame(ListenerProfile::APPROVED, $profile->verification_status);
+        $this->assertSame(ListenerProfile::PSYCH_STUDENT, $profile->credential_level);
+        $this->assertSame($admin->id, $profile->verified_by);
+        $this->assertNotNull($profile->verified_at);
+        $this->assertTrue($listener->fresh()->isVerifiedListener());
+
+        $dokumen = $profile->documents()->first();
+        $this->assertSame('approved', $dokumen->status);
+        $this->assertSame($admin->id, $dokumen->reviewed_by);
+        $this->assertNotNull($dokumen->reviewed_at);
+    }
+
+    public function test_approval_rejects_an_unknown_credential_level(): void
+    {
+        $listener = $this->pendingListenerWithDocument();
+
+        $this->actingAs(User::factory()->admin()->create())
+            ->post(route('admin.verifications.approve', $listener->listenerProfile), ['credential_level' => 'dokter'])
+            ->assertSessionHasErrors('credential_level');
+
+        $this->assertSame(ListenerProfile::PENDING, $listener->listenerProfile->fresh()->verification_status);
+    }
+
+    public function test_profile_without_pending_documents_cannot_be_approved_or_rejected(): void
+    {
+        $listener = User::factory()->age(21)->listener()->create();
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->post(route('admin.verifications.approve', $listener->listenerProfile), ['credential_level' => 'volunteer'])
+            ->assertSessionHas('status', 'Tidak ada dokumen yang menunggu pemeriksaan untuk profil ini.');
+        $this->actingAs($admin)
+            ->post(route('admin.verifications.reject', $listener->listenerProfile), ['note' => 'Tidak ada dokumen'])
+            ->assertSessionHas('status', 'Tidak ada dokumen yang menunggu pemeriksaan untuk profil ini.');
+
+        $profile = $listener->listenerProfile->fresh();
+        $this->assertSame(ListenerProfile::PENDING, $profile->verification_status);
+        $this->assertNull($profile->credential_level);
+    }
+
+    public function test_an_already_processed_profile_is_not_overwritten(): void
+    {
+        $listener = User::factory()->age(20)->listener(ListenerProfile::VOLUNTEER)->create();
+
+        $this->actingAs(User::factory()->admin()->create())
+            ->post(route('admin.verifications.approve', $listener->listenerProfile), ['credential_level' => 'psychologist'])
+            ->assertSessionHas('status', 'Profil ini sudah diproses sebelumnya.');
+
+        $this->assertSame(ListenerProfile::VOLUNTEER, $listener->listenerProfile->fresh()->credential_level);
+    }
+
+    public function test_admin_rejection_stores_the_note_and_the_listener_sees_it(): void
+    {
+        $listener = $this->pendingListenerWithDocument();
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->post(route('admin.verifications.reject', $listener->listenerProfile), ['note' => 'Dokumen buram'])
+            ->assertRedirect(route('admin.verifications.index'));
+
+        $profile = $listener->listenerProfile->fresh();
+        $this->assertSame(ListenerProfile::REJECTED, $profile->verification_status);
+        $this->assertNull($profile->credential_level);
+
+        $dokumen = $profile->documents()->first();
+        $this->assertSame('rejected', $dokumen->status);
+        $this->assertSame('Dokumen buram', $dokumen->review_note);
+        $this->assertSame($admin->id, $dokumen->reviewed_by);
+
+        $this->actingAs($listener)->get('/listener/profile')->assertSee('Dokumen buram');
+    }
+
+    public function test_rejection_requires_a_note(): void
+    {
+        $listener = $this->pendingListenerWithDocument();
+
+        $this->actingAs(User::factory()->admin()->create())
+            ->post(route('admin.verifications.reject', $listener->listenerProfile), ['note' => ''])
+            ->assertSessionHasErrors('note');
+
+        $this->assertSame(ListenerProfile::PENDING, $listener->listenerProfile->fresh()->verification_status);
+    }
+
+    public function test_only_admin_can_approve_or_reject(): void
+    {
+        $listener = $this->pendingListenerWithDocument();
+        $profile = $listener->listenerProfile;
+
+        $this->actingAs($listener)
+            ->post(route('admin.verifications.approve', $profile), ['credential_level' => 'psychologist'])
+            ->assertForbidden();
+        $this->actingAs(User::factory()->age(20)->create())
+            ->post(route('admin.verifications.reject', $profile), ['note' => 'x'])
+            ->assertForbidden();
+
+        $this->assertSame(ListenerProfile::PENDING, $profile->fresh()->verification_status);
+    }
+
+    public function test_rejected_listener_can_be_approved_after_uploading_again(): void
+    {
+        Storage::fake('local');
+        $listener = $this->pendingListenerWithDocument();
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin)
+            ->post(route('admin.verifications.reject', $listener->listenerProfile), ['note' => 'Buram']);
+
+        $this->actingAs($listener)->post('/listener/documents', [
+            'document' => UploadedFile::fake()->create('baru.pdf', 100, 'application/pdf'),
+        ]);
+        $this->actingAs($admin)
+            ->post(route('admin.verifications.approve', $listener->listenerProfile), ['credential_level' => 'volunteer']);
+
+        $this->assertTrue($listener->fresh()->isVerifiedListener());
     }
 }

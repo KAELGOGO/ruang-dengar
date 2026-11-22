@@ -57,7 +57,7 @@
                             </select>
                             <button type="submit" class="btn btn-success" @disabled($dokumenPending->isEmpty())>Setujui</button>
                             @if ($dokumenPending->isEmpty())
-                                <div class="form-text">Tidak bisa disetujui tanpa dokumen yang menunggu pemeriksaan.</div>
+                                <div class="form-text">Tidak bisa disetujui atau ditolak tanpa dokumen yang menunggu pemeriksaan.</div>
                             @endif
                         </form>
                     </div>
@@ -68,7 +68,7 @@
                             <label for="note-{{ $profile->id }}" class="form-label">Tolak dengan catatan</label>
                             <input type="text" id="note-{{ $profile->id }}" name="note" maxlength="255"
                                    class="form-control mb-2" placeholder="Alasan penolakan" required>
-                            <button type="submit" class="btn btn-outline-danger">Tolak</button>
+                            <button type="submit" class="btn btn-outline-danger" @disabled($dokumenPending->isEmpty())>Tolak</button>
                         </form>
                     </div>
                 </div>
