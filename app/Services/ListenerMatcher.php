@@ -13,42 +13,52 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Matching rule (team decision, Nov 2026):
+ * Matching rule (team decision, Nov 2026; priority order agreed 22 Nov):
  * - only admin-approved listeners;
- * - volunteers and psychology students serve users in their own age tier;
- * - psychologists may serve every tier, so teens (13-17) are only matched with psychologists,
- *   because listeners must be at least 18.
- * Among eligible slots, the listener with the fewest sessions goes first.
+ * - teens (13-17) are matched with psychologists only, because listeners must be at least 18;
+ * - users 18+ get, in this order: a volunteer/psychology student of their own age tier, one of
+ *   another tier, and a psychologist only as the last resort (psychologists are few and also
+ *   take the escalated cases);
+ * - within the same rank, the listener with the fewest sessions goes first.
  */
 class ListenerMatcher
 {
     public function openSlots(User $user, CarbonInterface $at): Builder
     {
-        [$earliest, $latest] = AgeTier::birthDateRange($user->ageTier(), $at);
+        $tier = $user->ageTier();
+        [$earliest, $latest] = AgeTier::birthDateRange($tier, $at);
 
         $load = CounselingSession::selectRaw('count(*)')
             ->whereColumn('counseling_sessions.listener_id', 'availability_slots.listener_id')
             ->where('status', '!=', CounselingSession::CANCELLED);
+        $isPsychologist = ListenerProfile::selectRaw('count(*)')
+            ->whereColumn('listener_profiles.user_id', 'availability_slots.listener_id')
+            ->where('credential_level', ListenerProfile::PSYCHOLOGIST);
+        // Peers only: psychologists are one rank, ordered by load alone.
+        // whereDate: the date cast stores "Y-m-d 00:00:00", which a plain string compare gets wrong on birthdays.
+        $sameTier = User::selectRaw('count(*)')
+            ->whereColumn('users.id', 'availability_slots.listener_id')
+            ->whereHas('listenerProfile', fn (Builder $p) => $p->where('credential_level', '!=', ListenerProfile::PSYCHOLOGIST))
+            ->whereDate('birth_date', '<=', $latest)
+            ->when($earliest, fn (Builder $q) => $q->whereDate('birth_date', '>=', $earliest));
 
         return AvailabilitySlot::query()
             ->where('starts_at', '<=', $at)
             ->where('ends_at', '>', $at)
             ->whereDoesntHave('counselingSession')
             ->where('listener_id', '!=', $user->id)
-            ->whereHas('listener', function (Builder $listener) use ($earliest, $latest) {
+            ->whereHas('listener', function (Builder $listener) use ($tier) {
                 $listener->where('role', User::ROLE_LISTENER)
-                    ->whereHas('listenerProfile', fn (Builder $p) => $p->where('verification_status', ListenerProfile::APPROVED))
-                    ->where(function (Builder $q) use ($earliest, $latest) {
-                        $q->whereHas('listenerProfile', fn (Builder $p) => $p->where('credential_level', ListenerProfile::PSYCHOLOGIST))
-                            ->orWhere(function (Builder $peer) use ($earliest, $latest) {
-                                $peer->where('birth_date', '<=', $latest);
-                                if ($earliest) {
-                                    $peer->where('birth_date', '>=', $earliest);
-                                }
-                            });
+                    ->whereHas('listenerProfile', function (Builder $p) use ($tier) {
+                        $p->where('verification_status', ListenerProfile::APPROVED);
+                        if ($tier === AgeTier::TEEN) {
+                            $p->where('credential_level', ListenerProfile::PSYCHOLOGIST);
+                        }
                     });
             })
-            ->addSelect(['listener_load' => $load])
+            ->addSelect(['listener_load' => $load, 'is_psychologist' => $isPsychologist, 'same_tier' => $sameTier])
+            ->orderBy('is_psychologist')
+            ->orderByDesc('same_tier')
             ->orderBy('listener_load')
             ->orderBy('starts_at');
     }
