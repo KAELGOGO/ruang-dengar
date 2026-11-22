@@ -63,7 +63,8 @@ class Modul1VerifikasiTest extends TestCase
         $listener = User::factory()->age(21)->listener()->create();
 
         $this->actingAs($listener)->put('/listener/profile', ['bio' => 'Suka mendengarkan.'])
-            ->assertRedirect();
+            ->assertRedirect(route('listener.profile.edit').'#kartu-bio')
+            ->assertSessionHas('bio_status', 'Profil disimpan.');
 
         $this->assertSame('Suka mendengarkan.', $listener->listenerProfile->fresh()->bio);
     }
@@ -73,6 +74,7 @@ class Modul1VerifikasiTest extends TestCase
         $listener = User::factory()->age(21)->listener()->create();
 
         $this->actingAs($listener)->put('/listener/profile', ['bio' => str_repeat('a', 1001)])
+            ->assertRedirect(route('listener.profile.edit').'#kartu-bio')
             ->assertSessionHasErrors('bio');
     }
 
@@ -83,7 +85,8 @@ class Modul1VerifikasiTest extends TestCase
 
         $this->actingAs($listener)->post('/listener/documents', [
             'document' => UploadedFile::fake()->create('ijazah.pdf', 100, 'application/pdf'),
-        ])->assertRedirect();
+        ])->assertRedirect(route('listener.profile.edit').'#dokumen')
+            ->assertSessionHas('doc_status');
 
         $dokumen = $listener->listenerProfile->documents()->first();
         $this->assertNotNull($dokumen);
@@ -99,7 +102,8 @@ class Modul1VerifikasiTest extends TestCase
 
         $this->actingAs($listener)->post('/listener/documents', [
             'document' => UploadedFile::fake()->create('virus.exe', 100, 'application/x-msdownload'),
-        ])->assertSessionHasErrors('document');
+        ])->assertRedirect(route('listener.profile.edit').'#dokumen')
+            ->assertSessionHasErrors('document');
 
         $this->actingAs($listener)->post('/listener/documents', [
             'document' => UploadedFile::fake()->create('besar.pdf', 6000, 'application/pdf'),
@@ -341,5 +345,50 @@ class Modul1VerifikasiTest extends TestCase
             ->post(route('admin.verifications.approve', $listener->listenerProfile), ['credential_level' => 'volunteer']);
 
         $this->assertTrue($listener->fresh()->isVerifiedListener());
+    }
+
+    public function test_invalid_upload_shows_the_error_inside_the_documents_card(): void
+    {
+        Storage::fake('local');
+        $listener = User::factory()->age(21)->listener()->create();
+
+        $this->actingAs($listener)->followingRedirects()->post('/listener/documents', [
+            'document' => UploadedFile::fake()->create('virus.exe', 100, 'application/x-msdownload'),
+        ])->assertSee('id="dokumen"', false)
+            ->assertSee('Dokumen tidak diunggah');
+    }
+
+    public function test_success_messages_are_shown_inside_their_cards(): void
+    {
+        Storage::fake('local');
+        $listener = User::factory()->age(21)->listener()->create();
+
+        $this->actingAs($listener)->followingRedirects()->put('/listener/profile', ['bio' => 'Halo'])
+            ->assertSee('id="kartu-bio"', false)
+            ->assertSee('Profil disimpan.');
+
+        $this->actingAs($listener)->followingRedirects()->post('/listener/documents', [
+            'document' => UploadedFile::fake()->create('ijazah.pdf', 100, 'application/pdf'),
+        ])->assertSee('Dokumen berhasil diunggah');
+    }
+
+    public function test_upload_and_bio_errors_are_in_indonesian(): void
+    {
+        Storage::fake('local');
+        $listener = User::factory()->age(21)->listener()->create();
+
+        $this->actingAs($listener)->post('/listener/documents', [
+            'document' => UploadedFile::fake()->create('virus.exe', 100, 'application/x-msdownload'),
+        ])->assertSessionHasErrors(['document' => 'Format file harus PDF, JPG, atau PNG.']);
+
+        $this->actingAs($listener)->post('/listener/documents', [
+            'document' => UploadedFile::fake()->create('besar.pdf', 6000, 'application/pdf'),
+        ])->assertSessionHasErrors(['document' => 'Ukuran file maksimal 5 MB.']);
+
+        $this->actingAs($listener)->post('/listener/documents', [])
+            ->assertSessionHasErrors(['document' => 'Pilih file terlebih dahulu.']);
+
+        $this->actingAs($listener)->put('/listener/profile', ['bio' => str_repeat('a', 1001)])
+            ->assertSessionHasErrors(['bio' => 'Bio maksimal 1000 karakter.']);
     }
 }

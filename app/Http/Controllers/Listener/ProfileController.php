@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Listener;
 use App\Http\Controllers\Controller;
 use App\Models\ListenerProfile;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 // Module 1: listener profile and credential upload.
 class ProfileController extends Controller
@@ -24,16 +25,36 @@ class ProfileController extends Controller
 
     public function update(Request $request)
     {
-        $data = $request->validate(['bio' => ['nullable', 'string', 'max:1000']]);
+        $data = $this->validateAt(
+            $request,
+            ['bio' => ['nullable', 'string', 'max:1000']],
+            'kartu-bio',
+            [
+                'bio.string' => 'Bio harus berupa teks.',
+                'bio.max' => 'Bio maksimal 1000 karakter.',
+            ]
+        );
 
         $request->user()->listenerProfile()->firstOrCreate()->update($data);
 
-        return back()->with('status', 'Profil disimpan.');
+        return redirect($this->pageUrl('kartu-bio'))->with('bio_status', 'Profil disimpan.');
     }
 
     public function upload(Request $request)
     {
-        $request->validate(['document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120']]);
+        $this->validateAt(
+            $request,
+            ['document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120']],
+            'dokumen',
+            [
+                'document.required' => 'Pilih file terlebih dahulu.',
+                'document.file' => 'Yang diunggah harus berupa file.',
+                // PHP itself refuses files above upload_max_filesize before the max rule runs.
+                'document.uploaded' => 'File gagal diunggah. Pastikan ukurannya tidak lebih dari 5 MB.',
+                'document.mimes' => 'Format file harus PDF, JPG, atau PNG.',
+                'document.max' => 'Ukuran file maksimal 5 MB.',
+            ]
+        );
 
         $profile = $request->user()->listenerProfile()->firstOrCreate();
         $file = $request->file('document');
@@ -51,6 +72,23 @@ class ProfileController extends Controller
             $profile->forceFill(['verification_status' => ListenerProfile::PENDING])->save();
         }
 
-        return back()->with('status', 'Dokumen berhasil diunggah dan menunggu pemeriksaan admin.');
+        return redirect($this->pageUrl('dokumen'))
+            ->with('doc_status', 'Dokumen berhasil diunggah dan menunggu pemeriksaan admin.');
+    }
+
+    /** Profile page URL with an #anchor, so the browser jumps to the card that was just used. */
+    private function pageUrl(string $anchor): string
+    {
+        return route('listener.profile.edit').'#'.$anchor;
+    }
+
+    /** Same as $request->validate(), but errors send the user back to the card instead of the page top. */
+    private function validateAt(Request $request, array $rules, string $anchor, array $messages = []): array
+    {
+        try {
+            return $request->validate($rules, $messages);
+        } catch (ValidationException $e) {
+            throw $e->redirectTo($this->pageUrl($anchor));
+        }
     }
 }

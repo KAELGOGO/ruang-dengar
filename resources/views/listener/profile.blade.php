@@ -41,9 +41,13 @@
         </div>
     </div>
 
-    <div class="card mb-4">
+    <div class="card mb-4" id="kartu-bio">
         <div class="card-header fw-semibold">Bio</div>
         <div class="card-body">
+            @if (session('bio_status'))
+                <div class="alert alert-success">{{ session('bio_status') }}</div>
+            @endif
+
             <form method="POST" action="{{ route('listener.profile.update') }}">
                 @csrf
                 @method('PUT')
@@ -62,9 +66,16 @@
         </div>
     </div>
 
-    <div class="card mb-4">
+    <div class="card mb-4" id="dokumen">
         <div class="card-header fw-semibold">Dokumen kredensial</div>
         <div class="card-body">
+            @if (session('doc_status'))
+                <div class="alert alert-success">{{ session('doc_status') }}</div>
+            @endif
+            @error('document')
+                <div class="alert alert-danger">Dokumen tidak diunggah: {{ $message }}</div>
+            @enderror
+
             @if ($profile->documents->isEmpty())
                 <p class="text-muted">Belum ada dokumen. Unggah sertifikat atau ijazah supaya admin bisa memverifikasi kamu.</p>
             @else
