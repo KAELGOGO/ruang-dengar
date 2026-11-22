@@ -6,7 +6,6 @@ use App\Models\CounselingSession;
 use App\Models\Escalation;
 use App\Models\ListenerProfile;
 use App\Models\User;
-use App\Services\Escalator;
 use App\Services\ListenerMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -52,11 +51,9 @@ class ChatTest extends TestCase
         $this->assertSame(0, $session->messages()->count());
     }
 
-    public function test_crisis_keywords_flag_any_message_and_escalate(): void
+    public function test_crisis_keywords_flag_any_message_but_never_escalate_by_themselves(): void
     {
         $session = $this->liveSession();
-        $this->mock(Escalator::class)->shouldReceive('byKeyword')->twice()
-            ->withArgs(fn ($s, string $reason) => $s->is($session) && $reason === 'Kata kunci krisis: ingin mati');
 
         $this->send($session->user, $session, 'Aku INGIN   mati rasanya')->assertCreated()->assertJsonPath('krisis', true);
         $this->send($session->listener, $session, 'Apakah kamu ingin mati?')->assertCreated()->assertJsonPath('krisis', true);
@@ -65,15 +62,26 @@ class ChatTest extends TestCase
         $this->assertSame([true, true, false], $session->messages()->orderBy('id')->pluck('flagged')->all());
         $this->actingAs($session->listener)->getJson(route('chat.messages', $session))->assertJsonPath('pesan.0.flagged', true);
         $this->actingAs($session->user)->getJson(route('chat.messages', $session))->assertJsonPath('pesan.0.flagged', false);
+        // Escalating is the listener's decision (Module 4 button), not the keyword's.
+        $this->assertSame(0, Escalation::count());
+        $this->assertSame(CounselingSession::ACTIVE, $session->fresh()->status);
     }
 
-    public function test_a_failing_escalation_does_not_lose_the_message(): void
+    public function test_polling_reports_the_hand_over_to_a_psychologist(): void
     {
         $session = $this->liveSession();
-        $this->mock(Escalator::class)->shouldReceive('byKeyword')->andThrow(new \RuntimeException('Modul 4 error'));
+        $poll = fn () => $this->actingAs($session->user)->getJson(route('chat.messages', $session));
 
-        $this->send($session->user, $session, 'aku mau mati')->assertCreated()->assertJsonPath('krisis', true);
-        $this->assertSame(1, $session->messages()->count());
+        $poll()->assertJsonPath('eskalasi', null);
+
+        $escalation = $session->escalation()->forceCreate([
+            'source' => 'listener', 'raised_by' => $session->listener_id, 'reason' => 'perlu psikolog',
+        ]);
+        $poll()->assertJsonPath('eskalasi', 'menunggu');
+
+        $psychologist = User::factory()->age(35)->listener(ListenerProfile::PSYCHOLOGIST)->create();
+        $escalation->forceFill(['psychologist_id' => $psychologist->id, 'status' => Escalation::ASSIGNED])->save();
+        $poll()->assertJsonPath('eskalasi', 'diambil');
     }
 
     public function test_message_body_is_encrypted_in_the_database(): void

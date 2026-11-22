@@ -26,16 +26,20 @@ class EscalationController extends Controller
             'modul' => 'Modul 4: Eskalasi',
             'judul' => 'Antrean eskalasi (khusus psikolog)',
             'todo' => [
-                'Daftar eskalasi status open/assigned, terbaru dulu, tandai yang dari kata kunci (source keyword).',
+                'Daftar eskalasi: open dulu, yang paling lama menunggu di atas (selama menunggu, pengguna masih ditemani listener).',
                 'Tombol "Ambil kasus" (route escalations.take) lalu "Selesai" (escalations.resolve).',
-                'Psikolog yang mengambil kasus boleh membaca chat sesi itu (sudah diatur di CounselingSessionPolicy@view).',
+                'Setelah diambil, psikolog itu boleh membaca chat sesi lama sebagai konteks (sudah diatur di CounselingSessionPolicy@view). Sebelum diambil belum boleh.',
             ],
         ]);
     }
 
     public function take(Escalation $escalation)
     {
-        // TODO (Module 4): only if still open; set psychologist_id = auth id, status assigned.
+        // TODO (Module 4): only if still open, with a conditional update
+        // (Escalation::whereKey(...)->where('status', 'open')->update(...)) so two psychologists
+        // cannot both take it; set psychologist_id = auth id, status assigned.
+        // Then create a new session for the same user and topic with this psychologist starting now:
+        // an AvailabilitySlot now..now+60 min and a CounselingSession on it, and redirect to its chat.
         abort(501, 'Belum dibuat (Modul 4)');
     }
 

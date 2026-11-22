@@ -75,7 +75,7 @@ dan merapikan semua halaman.
 
 **Sudah ada:** route `chat.show`, `chat.messages`, `chat.store`, dan `chat.end`, aturan akses (hanya kedua
 peserta, ditambah psikolog yang menangani eskalasi), model `Message` dengan isi terenkripsi, daftar kata
-kunci di `config/krisis.php`, partial `partials/kontak-krisis`, dan `Escalator::byKeyword()` dari Modul 4.
+kunci di `config/krisis.php`, dan partial `partials/kontak-krisis`.
 
 **File milikmu:** `app/Http/Controllers/ChatController.php`, view baru di `resources/views/chat/show.blade.php`,
 dan JavaScript chat (boleh langsung di view itu, atau di `resources/js/chat.js`).
@@ -84,7 +84,8 @@ dan JavaScript chat (boleh langsung di view itu, atau di `resources/js/chat.js`)
 - [ ] Halaman chat: bubble pesan kiri/kanan, form kirim, panel kontak krisis (`@include('partials.kontak-krisis')`), tombol "Saya butuh bantuan segera", dan `@include('chat._eskalasi', ['sesi' => $session])` untuk tombol eskalasi dari Modul 4.
 - [ ] Polling: setiap 3 detik `fetch` ke `chat.messages?after=<id terakhir>`, lalu tambahkan pesan baru. Kirim pesan juga lewat `fetch` (token CSRF ada di `<meta name="csrf-token">`), tanpa reload halaman.
 - [ ] `messages`: kembalikan JSON pesan dengan id lebih besar dari `after`, berisi `id`, `body`, `created_at`, dan `punya_saya`.
-- [ ] `store`: periksa kata kunci (huruf kecil, `str_contains`) **sebelum** pesan disimpan, isi `flagged`, lalu panggil `app(\App\Services\Escalator::class)->byKeyword(...)`. Setelah itu tampilkan kontak krisis ke pengirim.
+- [ ] `store`: periksa kata kunci (huruf kecil, `str_contains`) **sebelum** pesan disimpan, lalu isi `flagged`. Kata kunci hanya alarm: kontak krisis muncul ke pengirim dan tanda muncul di layar listener, **tanpa** membuat eskalasi (yang memutuskan oper ke psikolog adalah listener, lihat Modul 4).
+- [ ] Pemberitahuan serah-terima: kalau sesi sudah dioper, tampilkan "menunggu psikolog" atau "psikolog sudah mengambil kasus, lihat Sesi saya" tanpa reload.
 - [ ] Jam aktif: pesan hanya bisa dikirim dari `scheduled_at` sampai `slot->ends_at`. Di luar jam itu, form dikunci dan diberi keterangan. Pesan pertama mengubah status dari `scheduled` ke `active` dan mengisi `started_at`.
 - [ ] `end`: status jadi `ended` dan `ended_at` diisi. Pengguna diarahkan ke halaman rating, listener ke "Sesi saya".
 - [ ] Psikolog yang membuka chat dari antrean eskalasi hanya bisa membaca (form kirim disembunyikan).
@@ -97,8 +98,15 @@ dan JavaScript chat (boleh langsung di view itu, atau di `resources/js/chat.js`)
 
 ## Modul 4: Eskalasi, rating & metrik
 
+**Alur (diputuskan 22 Nov):** kata kunci di chat hanya alarm. Yang memutuskan kasus dioper ke psikolog
+adalah listener, lewat tombol. Selama menunggu psikolog, listener tetap menemani pengguna, jadi chat lama
+tidak dikunci. Kalau ada psikolog yang sedang kosong, sistem langsung membuat sesi baru pengguna–psikolog.
+Kalau tidak ada, kasus menunggu di antrean sampai ada psikolog yang menekan "Ambil kasus".
+
 **Sudah ada:** route, aturan akses `escalate` dan `rate`, gate `handle-escalations` (khusus psikolog),
-kerangka `app/Services/Escalator.php`, dan partial `sessions/_aksi-modul-4` yang sudah berisi tombol rating.
+kerangka `app/Services/Escalator.php` (langkah-langkahnya ada di komentar `byListener`), partial
+`sessions/_aksi-modul-4` yang sudah berisi tombol rating, dan pemberitahuan serah-terima di halaman chat
+(Modul 3 membaca tabel `escalations`, jadi pemberitahuannya langsung jalan begitu eskalasi dibuat).
 
 **File milikmu:** `app/Services/Escalator.php`, `app/Http/Controllers/EscalationController.php`,
 `app/Http/Controllers/RatingController.php`, `app/Http/Controllers/Admin/MetricsController.php`,
@@ -106,28 +114,36 @@ kerangka `app/Services/Escalator.php`, dan partial `sessions/_aksi-modul-4` yang
 dan view baru di `resources/views/escalations*`, `ratings*`, serta `admin/metrics*`.
 
 **Tugas:**
-- [ ] `Escalator::byListener` dan `byKeyword`. Baca komentar di file itu dan **jangan ubah nama method-nya**, karena Modul 3 memanggilnya.
-- [ ] Tombol "Perlu tindakan lanjut?" untuk listener, berisi form alasan. Tombolnya ada di partial `_aksi-modul-4` dan `chat/_eskalasi`, dan mengirim ke `EscalationController@store`.
-- [ ] Antrean psikolog: daftar kasus `open` dan `assigned`, kasus dari kata kunci paling atas, tombol "Ambil kasus" dan "Selesai", serta link ke chat sesi itu.
+- [ ] Tombol "Oper ke psikolog" untuk listener, berisi form alasan. Tombolnya ada di partial `_aksi-modul-4` dan `chat/_eskalasi`, mengirim ke `EscalationController@store`, lalu memanggil `Escalator::byListener`.
+- [ ] `Escalator::byListener` (ikuti langkah di komentarnya):
+  1. buat eskalasi (`source` listener, `status` open);
+  2. cari psikolog yang punya slot kosong sekarang (`ListenerMatcher::openSlots()` ditambah filter psikolog);
+  3. kalau ada: buat sesi baru pengguna–psikolog di slot itu, lalu eskalasi jadi `assigned`;
+  4. kalau tidak ada: eskalasi tetap `open` dan menunggu di antrean;
+  5. **jangan ubah status sesi lama**, karena status `escalated` mengunci chat.
+- [ ] Antrean psikolog: daftar kasus `open` dan `assigned`, yang paling lama menunggu di atas, tombol "Ambil kasus" dan "Selesai", serta link ke chat sesi lama sebagai konteks (hanya untuk kasus yang sudah diambil psikolog itu; sebelum diambil, aturan akses menolaknya).
+- [ ] "Ambil kasus": eskalasi jadi `assigned` (pakai update bersyarat supaya dua psikolog tidak mengambil kasus yang sama), lalu buat sesi baru pengguna–psikolog mulai sekarang (slot baru dari sekarang sampai +60 menit), dan arahkan psikolog ke chat sesi baru itu.
+- [ ] Data demo `Modul4Seeder`: psikolog kedua dengan slot yang sedang berjalan. Psikolog di seeder utama sudah dipakai pengguna remaja di langkah demo 3, jadi tanpa psikolog kedua langkah 5 akan masuk antrean, bukan dipasangkan otomatis.
 - [ ] Rating: form 1–5 dan komentar, satu kali per sesi.
 - [ ] Dashboard metrik admin:
   - jumlah sesi selesai;
   - *repeat usage* (pengguna dengan lebih dari 1 sesi);
-  - jumlah eskalasi (dari listener dan dari kata kunci);
+  - jumlah eskalasi, dan berapa yang sudah diambil psikolog;
+  - jumlah pesan bertanda kata kunci (hitung `flagged`, isinya tidak boleh dibaca);
   - rata-rata rating.
 
   Ini bukti "measurable social outcomes" di proposal. Kalau mau grafik, pakai progress bar Bootstrap saja, karena lab belum tentu ada internet.
 
-**Selesai kalau:** listener mengeskalasi sebuah sesi, lalu psikolog mengambil dan menyelesaikannya, pengguna memberi rating, dan angka di dashboard metrik ikut berubah.
+**Selesai kalau:** listener menekan "Oper ke psikolog", sistem memasangkan psikolog yang kosong (sesi baru muncul di "Sesi saya" pengguna), psikolog dan pengguna bisa chat, pengguna memberi rating, dan angka di dashboard metrik ikut berubah. Kalau tidak ada psikolog yang kosong, kasusnya muncul di antrean dan "Ambil kasus" membuat sesinya.
 
-**Tes minimal:** hanya listener sesi itu yang bisa mengeskalasi, rating kedua kali ditolak, dan `byKeyword` tidak membuat eskalasi ganda.
+**Tes minimal:** hanya listener sesi itu yang bisa mengeskalasi, eskalasi membuat sesi baru dengan psikolog yang kosong (atau tetap `open` kalau tidak ada) tanpa mengubah status sesi lama, dan rating kedua kali ditolak.
 
 ---
 
 ## Aturan bersama
 
 - **Branch per modul:** `modul-1-verifikasi`, `modul-2-jadwal`, `modul-3-chat`, `modul-4-eskalasi`. Selesai, buka Pull Request ke `main`.
-- **Hanya ubah file milikmu.** Kalau butuh perubahan di file orang lain, kabari pemiliknya. Hubungan antarmodul sudah disiapkan lewat partial dan `Escalator`, jadi seharusnya jarang perlu.
+- **Hanya ubah file milikmu.** Kalau butuh perubahan di file orang lain, kabari pemiliknya. Hubungan antarmodul sudah disiapkan lewat partial dan tabel `escalations`, jadi seharusnya jarang perlu.
 - **`routes/web.php` dan `layouts/app.blade.php`:** semua route dan link sudah ada. Kalau butuh route baru, tambahkan di bagian modulmu saja.
 - **Database:** jangan mengubah migration lama. Kalau butuh kolom baru, buat migration baru.
 - **Data demo:** buat seeder sendiri (misalnya `Modul3Seeder`), lalu tambahkan satu baris `$this->call(...)` di akhir `DatabaseSeeder`.
@@ -139,6 +155,6 @@ dan view baru di `resources/views/escalations*`, `ratings*`, serta `admin/metric
 1. Calon listener daftar, upload sertifikat, lalu admin memverifikasinya dan memberi gelar. **(Modul 1)**
 2. Listener membuat jadwal. **(Modul 2)**
 3. Pengguna remaja menekan "Bicara sekarang" dan dipasangkan dengan psikolog. Pengguna 20 tahun dipasangkan dengan relawan seumuran. **(kerangka)**
-4. Pengguna dan listener mengobrol. Satu pesan berisi kata kunci krisis memunculkan kontak darurat. **(Modul 3)**
-5. Listener mengeskalasi sesi, lalu psikolog mengambil kasusnya. Pengguna memberi rating. **(Modul 4)**
+4. Pengguna dan listener mengobrol. Satu pesan berisi kata kunci krisis memunculkan kontak darurat untuk pengguna dan tanda di layar listener. **(Modul 3)**
+5. Listener menekan "Oper ke psikolog", sistem memasangkan psikolog yang kosong, dan pengguna pindah ke chat dengan psikolog. Pengguna memberi rating. **(Modul 4)**
 6. Admin membuka dashboard metrik. **(Modul 4)**

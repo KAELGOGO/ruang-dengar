@@ -8,7 +8,8 @@ return [
         ['nama' => 'Darurat medis', 'nomor' => '119', 'link' => null],
     ],
 
-    // Messages containing any of these are flagged when saved (see Module 4 in README).
+    // Messages containing any of these are flagged when saved (Module 3, chat). Only an alarm:
+    // the user sees the crisis contacts, the listener a badge; the listener decides on escalation.
     // Plain lowercase substrings; extend with the team.
     'kata_kunci' => [
         'bunuh diri', 'ingin mati', 'pengen mati', 'mau mati', 'akhiri hidup',
