@@ -2,4 +2,4 @@
 @can('rate', $sesi)
     <a href="{{ route('ratings.create', $sesi) }}" class="btn btn-sm btn-outline-success">Beri rating</a>
 @endcan
-{{-- TODO (Module 4): "Perlu tindakan lanjut?" button for the listener (@can('escalate', $sesi)), with a reason field. --}}
+{{-- TODO (Module 4): "Oper ke psikolog" button for the listener (@can('escalate', $sesi)), with a reason field. --}}

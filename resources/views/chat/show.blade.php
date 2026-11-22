@@ -38,6 +38,7 @@
 
     <div class="row g-3">
         <div class="col-lg-8">
+            <div id="info-eskalasi" class="alert alert-warning d-none" role="status"></div>
             <div id="daftar-pesan" class="border rounded p-3 bg-light" style="height: 55vh; overflow-y: auto"
                  role="log" aria-live="polite" aria-label="Pesan">
                 <p id="kosong" class="text-muted small text-center my-5">Belum ada pesan.</p>
@@ -87,8 +88,10 @@
     {{-- Js::from, not @json: @json splits its argument on commas and breaks array literals. --}}
     const urlPesan = {{ Js::from(route('chat.messages', $session)) }};
     const urlKirim = {{ Js::from(route('chat.store', $session)) }};
+    const urlSesi = {{ Js::from(route('sessions.index')) }};
     const nama = {{ Js::from(['pengguna' => $session->user->name, 'listener' => $session->listener->name]) }};
     const pembaca = {{ Js::from(! $peserta) }};
+    const sayaPengguna = {{ Js::from($saya->id === $session->user_id) }};
     const terbuka = ['scheduled', 'active'];
     const awalTerbuka = terbuka.includes({{ Js::from($session->status) }});
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
@@ -148,6 +151,31 @@
         if (list.length && (diBawah || paksaTurun)) kotak.scrollTop = kotak.scrollHeight;
     }
 
+    // Hand-over to a psychologist (Module 4): 'menunggu' = still in the queue, 'diambil' = a new session exists.
+    let eskalasiTampil = null;
+    function tampilEskalasi(keadaan) {
+        // Rebuild only on change: the banner is a live region and may hold a focused link.
+        if (!keadaan || keadaan === eskalasiTampil) return;
+        eskalasiTampil = keadaan;
+        const info = document.getElementById('info-eskalasi');
+        info.classList.remove('d-none');
+        if (!sayaPengguna) {
+            info.textContent = keadaan === 'diambil'
+                ? 'Psikolog sudah mengambil kasus ini dan membuat sesi baru dengan pengguna. Sesi ini boleh diakhiri setelah berpamitan.'
+                : 'Kasus ini menunggu psikolog yang kosong. Tetap temani pengguna sampai psikolog mengambil kasusnya.';
+        } else if (keadaan === 'diambil') {
+            info.textContent = 'Psikolog sudah siap membantumu. Buka sesi barunya di ';
+            const link = document.createElement('a');
+            link.href = urlSesi;
+            link.className = 'alert-link';
+            link.textContent = 'Sesi saya';
+            info.append(link, '.');
+        } else {
+            info.textContent = 'Listener meneruskan kasusmu ke psikolog. Sambil menunggu, kamu tetap bisa ngobrol di sini. '
+                + 'Kalau sedang dalam bahaya, hubungi kontak krisis di halaman ini.';
+        }
+    }
+
     function tunjukkanKrisis() {
         const k = document.getElementById('pesan-krisis');
         k.classList.remove('d-none');
@@ -161,10 +189,11 @@
             if (!res.ok) return;
             const data = await res.json();
             tampilBanyak(data.pesan, lastId === 0);
+            tampilEskalasi(data.eskalasi);
             // Only polling moves lastId. Moving it on send would skip the other side's
             // message that arrived in between (it has a lower id than ours).
             if (data.pesan.length) lastId = data.pesan[data.pesan.length - 1].id;
-            // The other side ended or escalated the session: reload to show the locked state.
+            // The other side ended the session: reload to show the locked state.
             if (awalTerbuka && !terbuka.includes(data.status)) {
                 aktif = false;
                 location.reload();

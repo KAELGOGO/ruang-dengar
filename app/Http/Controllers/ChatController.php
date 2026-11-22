@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\CounselingSession;
 use App\Models\Message;
-use App\Services\Escalator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -43,10 +42,17 @@ class ChatController extends Controller
         $pesan = $session->messages()->where('id', '>', $after)->orderBy('id')->get()
             ->map(fn (Message $m) => $this->format($m, $session, $request->user()->id));
 
-        return response()->json(['status' => $session->status, 'pesan' => $pesan]);
+        // Lets the chat page show the hand-over to a psychologist without a reload (Module 4 creates it).
+        $eskalasi = $session->escalation;
+
+        return response()->json([
+            'status' => $session->status,
+            'eskalasi' => $eskalasi ? ($eskalasi->psychologist_id ? 'diambil' : 'menunggu') : null,
+            'pesan' => $pesan,
+        ]);
     }
 
-    public function store(Request $request, CounselingSession $session, Escalator $escalator)
+    public function store(Request $request, CounselingSession $session)
     {
         Gate::authorize('chat', $session);
         abort_unless($this->isOpenNow($session), 403, 'Chat hanya bisa dipakai di jam sesi.');
@@ -54,6 +60,7 @@ class ChatController extends Controller
         $sender = $request->user();
 
         // Checked BEFORE saving: the body is encrypted afterwards and cannot be searched.
+        // The keyword is only an alarm (crisis contacts + badge); the listener decides on escalation.
         $keyword = $this->crisisKeyword($data['body']);
 
         $message = new Message(['body' => $data['body'], 'flagged' => $keyword !== null]);
@@ -63,15 +70,6 @@ class ChatController extends Controller
         // Conditional update, so a session ended at the same moment is never reopened.
         CounselingSession::whereKey($session->id)->where('status', CounselingSession::SCHEDULED)
             ->update(['status' => CounselingSession::ACTIVE, 'started_at' => now()]);
-
-        if ($keyword !== null) {
-            try {
-                // Only the keyword goes into the (unencrypted) escalation reason, never the message itself.
-                $escalator->byKeyword($session, 'Kata kunci krisis: '.$keyword);
-            } catch (\Throwable $e) {
-                report($e); // the message is already saved; the chat must keep working
-            }
-        }
 
         return response()->json([
             'pesan' => $this->format($message, $session, $sender->id),
@@ -85,7 +83,7 @@ class ChatController extends Controller
         // An ended session counts as completed in the metrics; before the start, "Batalkan" is the right action.
         abort_if(now()->lt($session->scheduled_at), 403, 'Sesi belum dimulai. Pakai "Batalkan" di Sesi saya.');
 
-        // Conditional update, so a session escalated at the same moment is not overwritten to ended.
+        // Conditional update, so a session closed at the same moment (e.g. cancelled) is not overwritten.
         CounselingSession::whereKey($session->id)
             ->whereIn('status', [CounselingSession::SCHEDULED, CounselingSession::ACTIVE])
             ->update(['status' => CounselingSession::ENDED, 'ended_at' => now()]);
