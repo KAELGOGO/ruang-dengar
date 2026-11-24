@@ -1,8 +1,294 @@
-// Fonts
-@import url('https://fonts.bunny.net/css?family=Nunito');
+// Fonts (Grandstander for headings, Nunito for text; both fall back to system fonts offline)
+@import url('https://fonts.bunny.net/css?family=Grandstander:500,600,700|Nunito:400,600,700,800');
 
 // Variables
 @import 'variables';
 
 // Bootstrap
 @import 'bootstrap/scss/bootstrap';
+
+// ===== Base =====
+
+html {
+    background: #f8f2fb;
+}
+
+body {
+    background: linear-gradient(160deg, #fff4ec 0%, #f6f0ff 50%, #eefaf4 100%) fixed;
+}
+
+#app {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+
+    > main { flex: 1 0 auto; }
+}
+
+// Frosted pastel surfaces
+.card,
+.list-group,
+.navbar-soft,
+.site-footer {
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.card { box-shadow: $box-shadow-sm; }
+.list-group { box-shadow: $box-shadow-sm; border-radius: $card-border-radius; }
+
+h1, .h1, h2, .h2 { letter-spacing: -0.01em; }
+
+// ===== Floating background blobs =====
+
+.blobs {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+
+    span {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(50px);
+        opacity: 0.55;
+        animation: drift 22s ease-in-out infinite alternate;
+    }
+
+    span:nth-child(1) { width: 26rem; height: 26rem; background: $mint; top: -6rem; left: -6rem; }
+    span:nth-child(2) { width: 22rem; height: 22rem; background: $lavender-light; top: 10%; right: -5rem; animation-duration: 26s; animation-delay: -6s; }
+    span:nth-child(3) { width: 20rem; height: 20rem; background: $peach-light; bottom: -5rem; left: 20%; animation-duration: 30s; animation-delay: -12s; }
+    span:nth-child(4) { width: 16rem; height: 16rem; background: $pink-light; bottom: 15%; right: 10%; animation-duration: 24s; animation-delay: -3s; }
+    span:nth-child(5) { width: 14rem; height: 14rem; background: $butter; top: 40%; left: 35%; animation-duration: 28s; animation-delay: -9s; }
+}
+
+@keyframes drift {
+    0% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(4rem, 3rem) scale(1.1); }
+    66% { transform: translate(-3rem, 5rem) scale(0.95); }
+    100% { transform: translate(2rem, -3rem) scale(1.05); }
+}
+
+// ===== Navbar, logo, footer =====
+
+.navbar-soft {
+    background: rgba(255, 248, 241, 0.6);
+    border-bottom: 1px solid rgba($ink, 0.04);
+
+    .nav-link {
+        border-radius: 50rem;
+        padding-inline: 0.9rem !important;
+        font-weight: 600;
+        transition: background-color 0.2s ease;
+
+        &:hover { background: rgba($sage, 0.08); }
+        &.active { background: $sage-soft; color: $sage; }
+    }
+}
+
+.navbar-brand {
+    font-family: $headings-font-family;
+    font-weight: 600;
+    font-size: 1.35rem;
+    color: $ink;
+
+    .brand-dot { color: $apple; }
+}
+
+.site-footer {
+    background: rgba(255, 248, 241, 0.5);
+}
+
+// ===== Dengi the apple =====
+
+.dengi-apple {
+    flex-shrink: 0;
+    overflow: visible;
+    animation: bob 3.5s ease-in-out infinite;
+}
+
+.dengi-eyes {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: blink 5s infinite;
+}
+
+.dengi-arm {
+    transform-box: fill-box;
+    transform-origin: left bottom;
+    animation: wave 2.4s ease-in-out infinite;
+}
+
+.dengi-leaf {
+    transform-box: fill-box;
+    transform-origin: left bottom;
+    animation: sway 4s ease-in-out infinite;
+}
+
+.dengi-bubble {
+    position: relative;
+    background: $surface;
+    backdrop-filter: blur(10px);
+    border-radius: 1.4rem;
+    padding: 0.85rem 1.15rem;
+    box-shadow: $box-shadow-sm;
+    font-weight: 600;
+    animation: pop-in 0.5s 0.2s both cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    &::before {
+        content: '';
+        position: absolute;
+        left: -0.45rem;
+        top: 50%;
+        width: 1rem;
+        height: 1rem;
+        background: inherit;
+        transform: translateY(-50%) rotate(45deg);
+        border-radius: 0.2rem;
+    }
+}
+
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes wave { 0%, 60%, 100% { transform: rotate(0); } 15%, 45% { transform: rotate(-18deg); } 30% { transform: rotate(10deg); } }
+@keyframes sway { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-8deg); } }
+
+// ===== Friendly motion =====
+
+.pop-in { animation: pop-in 0.55s both cubic-bezier(0.34, 1.56, 0.64, 1); }
+.pop-in:nth-child(2) { animation-delay: 0.08s; }
+.pop-in:nth-child(3) { animation-delay: 0.16s; }
+.pop-in:nth-child(4) { animation-delay: 0.24s; }
+
+@keyframes pop-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.96); }
+    to { opacity: 1; transform: none; }
+}
+
+.btn {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+
+    &:hover { transform: translateY(-2px); }
+    &:active { transform: scale(0.96); }
+}
+
+.card-action {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover { transform: translateY(-4px) rotate(-0.5deg); box-shadow: $box-shadow; }
+}
+
+// ===== Helpers =====
+
+.bg-sage-soft { background-color: rgba($sage-soft, 0.8) !important; }
+.bg-lavender-soft { background-color: rgba($lavender-soft, 0.85) !important; }
+.bg-peach-soft { background-color: rgba($peach-soft, 0.85) !important; }
+
+.icon-bubble {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 1.2rem;
+    font-size: 1.5rem;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.95rem;
+    border-radius: 50rem;
+    background: $surface;
+    font-weight: 600;
+    font-size: 0.9rem;
+    box-shadow: $box-shadow-sm;
+}
+
+// Pill-style radio choices (topic picker)
+.btn-check + .btn-choice {
+    background: $surface;
+    border: 2px solid transparent;
+    color: $ink;
+    font-weight: 600;
+}
+
+.btn-check:checked + .btn-choice {
+    background: $sage-soft;
+    border-color: $sage;
+    color: $sage;
+}
+
+// ===== Landing =====
+
+.hero-title { font-size: clamp(2.2rem, 6vw, 3.6rem); line-height: 1.1; }
+
+// ===== Breathing circle =====
+
+.breath {
+    width: 5.5rem;
+    height: 5.5rem;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba($sage, 0.45), rgba($lavender, 0.3));
+    animation: breathe 8s ease-in-out infinite;
+}
+
+.breath-label::before {
+    content: 'Tarik napas…';
+    animation: breathe-label 8s step-end infinite;
+}
+
+@keyframes breathe { 0%, 100% { transform: scale(0.65); } 50% { transform: scale(1); } }
+@keyframes breathe-label { 0% { content: 'Tarik napas…'; } 50% { content: 'Hembuskan…'; } }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+// The logo apple blinks but stays still.
+.navbar-brand .dengi-apple { animation: none; }
+
+// Bubble under Dengi: tail points up.
+.dengi.flex-column .dengi-bubble::before {
+    left: 50%;
+    top: -0.45rem;
+    transform: translateX(-50%) rotate(45deg);
+}
+
+// ===== Onboarding =====
+
+.onb-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+
+    span {
+        width: 2rem;
+        height: 0.45rem;
+        border-radius: 50rem;
+        background: rgba($ink, 0.1);
+        transition: background-color 0.3s ease;
+    }
+
+    span.active { background: $sage; }
+}
+
+// Without JS the dots mean nothing, so only show them in step mode.
+form:not(.js-steps) .onb-dots { display: none; }
+form:not(.js-steps) .onb-step { margin-bottom: 3rem; }
+
+.onb-step:not([hidden]) { animation: pop-in 0.45s both cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+.btn-mood {
+    min-width: 6rem;
+    padding-block: 0.75rem;
+    border-radius: 1.4rem !important;
+}

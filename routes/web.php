@@ -8,6 +8,7 @@ use App\Http\Controllers\EscalationController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Listener\ProfileController;
 use App\Http\Controllers\Listener\SlotController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:user')->group(function () {
         Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
         Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
+        Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
+        Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
     });
 
     // Sessions: both participants (access checked by CounselingSessionPolicy)
