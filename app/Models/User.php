@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -38,6 +39,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'birth_date' => 'date',
+            'onboarded_at' => 'datetime',
         ];
     }
 
@@ -84,5 +86,16 @@ class User extends Authenticatable
     public function isPsychologist(): bool
     {
         return $this->isVerifiedListener() && $this->listenerProfile->credential_level === ListenerProfile::PSYCHOLOGIST;
+    }
+
+    /** Name Dengi uses: the onboarding nickname, else the name without the demo "(20)" suffix. */
+    public function displayName(): string
+    {
+        return $this->nickname ?: Str::before($this->name, ' (');
+    }
+
+    public function needsOnboarding(): bool
+    {
+        return $this->role === self::ROLE_USER && $this->onboarded_at === null;
     }
 }

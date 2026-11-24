@@ -18,6 +18,12 @@ class RegisterController extends Controller
 
     protected $redirectTo = '/home';
 
+    /** New users meet Dengi first; listeners go straight to their dashboard. */
+    protected function redirectTo(): string
+    {
+        return auth()->user()->needsOnboarding() ? route('onboarding.show') : $this->redirectTo;
+    }
+
     public function __construct()
     {
         $this->middleware('guest');

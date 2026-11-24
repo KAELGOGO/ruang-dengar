@@ -1,7 +1,82 @@
-// Body
-$body-bg: #f8fafc;
+// Ruang Dengar "warm hug" theme: pastel, round, no pure white.
+// Everything feeds Bootstrap's own variables, so every module's page picks it up.
 
-// Typography
-$font-family-sans-serif: 'Nunito', sans-serif;
-$font-size-base: 0.9rem;
+// Palette
+$mint: #bfe6d6;
+$lavender-light: #ddd3f7;
+$peach-light: #ffd8c6;
+$pink-light: #ffd0de;
+$butter: #fff0b8;
+
+$sage: #5c9c8b;
+$sage-soft: #dff0e8;
+$lavender: #9585cf;
+$lavender-soft: #ece6fa;
+$peach: #f4a382;
+$peach-soft: #ffe9de;
+$apple: #ffb3a7;
+$cream: #fff8f1;
+$ink: #3f3b55;
+
+// Translucent cream instead of white for every surface.
+$surface: rgba(255, 249, 243, 0.72);
+
+$primary: $sage;
+$secondary: $lavender;
+$success: #4f9a6c;
+$info: #6b9ccc;
+$warning: $peach;
+$danger: #d0605a;
+$light: #f7efe6;
+$dark: $ink;
+$white: #fffaf5;
+
+// Soft colours carry white text (WCAG large-text level); text on them is bold and big enough.
+$min-contrast-ratio: 3;
+
+// Body
+$body-bg: $cream;
+$body-color: $ink;
+$body-secondary-color: rgba($ink, 0.65);
+$link-color: $sage;
+
+// Typography: rounded and friendly
+$font-family-sans-serif: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+$headings-font-family: 'Grandstander', 'Nunito', 'Segoe UI', system-ui, sans-serif;
+$headings-font-weight: 600;
+$headings-color: $ink;
+$font-size-base: 1rem;
 $line-height-base: 1.6;
+$lead-font-size: 1.15rem;
+
+// Shapes
+$border-radius: 1.1rem;
+$border-radius-sm: 0.75rem;
+$border-radius-lg: 1.6rem;
+$border-color: rgba($ink, 0.08);
+$btn-border-radius: 50rem;
+$btn-border-radius-sm: 50rem;
+$btn-border-radius-lg: 50rem;
+$btn-padding-x: 1.4rem;
+$btn-font-weight: 700;
+$badge-border-radius: 50rem;
+$badge-padding-x: 0.8em;
+$badge-font-weight: 700;
+$input-bg: rgba(255, 252, 248, 0.85);
+$input-border-color: rgba($ink, 0.1);
+$input-focus-border-color: $sage;
+$form-select-bg: rgba(255, 252, 248, 0.85);
+
+// Surfaces
+$card-bg: $surface;
+$card-border-color: rgba(255, 255, 255, 0.5);
+$card-cap-bg: transparent;
+$card-border-radius: 1.6rem;
+$list-group-bg: $surface;
+$list-group-border-color: rgba($ink, 0.06);
+$dropdown-bg: $cream;
+$box-shadow: 0 0.75rem 2rem rgba(63, 59, 85, 0.08);
+$box-shadow-sm: 0 0.35rem 1rem rgba(63, 59, 85, 0.06);
+
+$alert-border-width: 0;
+$alert-border-radius: 1.2rem;
