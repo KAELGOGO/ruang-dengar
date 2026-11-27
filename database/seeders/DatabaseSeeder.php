@@ -39,5 +39,7 @@ class DatabaseSeeder extends Seeder
                 $listener->availabilitySlots()->create(['starts_at' => $mulai, 'ends_at' => $mulai->copy()->addHour()]);
             }
         }
+
+        $this->call(Modul4Seeder::class);
     }
 }
