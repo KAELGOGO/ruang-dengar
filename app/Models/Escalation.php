@@ -32,4 +32,29 @@ class Escalation extends Model
     {
         return $this->belongsTo(User::class, 'psychologist_id');
     }
+
+    // Module 4: labels for the queue.
+    public const SOURCES = [
+        'listener' => 'Listener',
+        'keyword' => 'Kata kunci',
+        'user' => 'Pengguna',
+    ];
+
+    /**
+     * Module 4: the new session the psychologist has with the user for this case.
+     * No column links them, so find the first session of that pair opened after the escalation.
+     */
+    public function followUpSession(): ?CounselingSession
+    {
+        if (! $this->psychologist_id) {
+            return null;
+        }
+
+        return CounselingSession::where('user_id', $this->counselingSession->user_id)
+            ->where('listener_id', $this->psychologist_id)
+            ->where('id', '>', $this->counseling_session_id)
+            ->where('created_at', '>=', $this->created_at)
+            ->orderBy('id')
+            ->first();
+    }
 }
