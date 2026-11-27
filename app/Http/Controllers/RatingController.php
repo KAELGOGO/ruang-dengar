@@ -12,23 +12,23 @@ class RatingController extends Controller
     public function create(CounselingSession $session)
     {
         Gate::authorize('rate', $session);
+        $session->load('listener.listenerProfile');
 
-        return view('placeholder', [
-            'modul' => 'Modul 4: Rating',
-            'judul' => 'Beri rating sesi #'.$session->id,
-            'todo' => ['Form skor 1-5 + komentar opsional, kirim ke route ratings.store.'],
-        ]);
+        return view('ratings.create', ['session' => $session]);
     }
 
     public function store(Request $request, CounselingSession $session)
     {
+        // The policy also blocks a second rating (it requires $session->rating to be null).
         Gate::authorize('rate', $session);
-        $request->validate([
+        $data = $request->validate([
             'score' => ['required', 'integer', 'between:1,5'],
             'comment' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        // TODO (Module 4): $session->rating()->create($data), redirect to sessions.index.
-        abort(501, 'Belum dibuat (Modul 4)');
+        $session->rating()->create($data);
+
+        return redirect()->route('sessions.index')
+            ->with('status', 'Terima kasih atas penilaianmu! Masukanmu membantu kami menjaga kualitas pendampingan.');
     }
 }
